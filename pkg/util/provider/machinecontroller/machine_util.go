@@ -123,6 +123,18 @@ func (c *controller) ValidateMachineClass(classSpec *v1alpha1.ClassSpec) (*v1alp
 		return nil, nil, retry, err
 	}
 
+	clone := machineClass.DeepCopy()
+
+	if finalizers := sets.NewString(clone.Finalizers...); !finalizers.Has(MCMFinalizerName) {
+		klog.Errorf("The machine class %s has no finalizers set. So not reconciling the machine.", machineClass.Name)
+		err = c.reconcileClusterMachineClassKey(machineClass.Name)
+		if err != nil {
+			klog.Errorf("Machine Class %q: Error occured while reconciling: %v", machineClass.Name, err)
+			return machineClass, secretData, retry, err
+		}
+		return machineClass, secretData, retry, err
+	}
+
 	return machineClass, secretData, retry, nil
 }
 

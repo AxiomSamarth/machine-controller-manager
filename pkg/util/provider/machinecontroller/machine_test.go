@@ -241,6 +241,13 @@ var _ = Describe("machine", func() {
 		objMeta := &metav1.ObjectMeta{
 			GenerateName: "class",
 			Namespace:    testNamespace,
+			Finalizers:   []string{MCMFinalizerName},
+		}
+
+		objMetaWithoutFinalizer := &metav1.ObjectMeta{
+			GenerateName: "class",
+			Namespace:    testNamespace,
+			Finalizers:   []string{MCMFinalizerName},
 		}
 
 		DescribeTable("##table",
@@ -252,6 +259,15 @@ var _ = Describe("machine", func() {
 				for _, o := range data.setup.aws {
 					machineObjects = append(machineObjects, o)
 				}
+
+				machine1 := &v1alpha1.Machine{
+					ObjectMeta: *newObjectMeta(objMeta, 0),
+					Spec: v1alpha1.MachineSpec{
+						Class: *data.action,
+					},
+				}
+
+				machineObjects = append(machineObjects, machine1)
 
 				coreObjects := []runtime.Object{}
 				for _, o := range data.setup.secrets {
@@ -329,6 +345,34 @@ var _ = Describe("machine", func() {
 					aws: []*v1alpha1.MachineClass{
 						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
+							SecretRef:  newSecretReference(objMeta, 0),
+						},
+					},
+				},
+				action: &v1alpha1.ClassSpec{
+					Kind: "MachineClass",
+					Name: "class-0",
+				},
+				expect: expect{
+					machineClass: &v1alpha1.MachineClass{
+						ObjectMeta: *newObjectMeta(objMeta, 0),
+						SecretRef:  newSecretReference(objMeta, 0),
+					},
+					secretData: map[string][]byte{"foo": []byte("bar")},
+					err:        false,
+				},
+			}),
+			Entry("machineClass without Finalizer", &data{
+				setup: setup{
+					secrets: []*corev1.Secret{
+						{
+							ObjectMeta: *newObjectMeta(objMeta, 0),
+							Data:       map[string][]byte{"foo": []byte("bar")},
+						},
+					},
+					aws: []*v1alpha1.MachineClass{
+						{
+							ObjectMeta: *newObjectMeta(objMetaWithoutFinalizer, 0),
 							SecretRef:  newSecretReference(objMeta, 0),
 						},
 					},
